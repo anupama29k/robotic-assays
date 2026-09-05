@@ -1,0 +1,8 @@
+streamlit>=1.32
+pandas>=2.0
+plotly>=5.18
+python-dotenv>=1.0
+# Optional — AI features (Ask BioInterface, AI Intelligence, RCA):
+# anthropic>=0.25
+# supabase>=2.4
+# voyageai>=0.2

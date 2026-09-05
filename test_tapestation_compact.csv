@@ -1,0 +1,6 @@
+Filename,Sample Description,Conc. [ng/ul],Average Size [bp],% in Region,From [bp],To [bp]
+sample_001.gel,Library-001,5.2,350,92.5,250,500
+sample_002.gel,Library-002,8.7,420,89.1,250,500
+sample_003.gel,Library-003,12.4,395,94.2,250,500
+sample_004.gel,Library-004,N/A,N/A,N/A,250,500
+sample_005.gel,Library-005,3.1,310,85.6,250,500

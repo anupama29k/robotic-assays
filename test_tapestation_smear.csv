@@ -1,0 +1,7 @@
+Sample,From [bp],To [bp],% Total,Average Size [bp],Conc. [ng/ul]
+Library-001,150,300,12.5,225,1.2
+Library-001,300,800,72.0,500,8.5
+Library-001,800,1500,15.5,1100,3.2
+Library-002,150,300,8.0,225,0.8
+Library-002,300,800,82.0,500,9.2
+Library-002,800,1500,10.0,1100,1.5
