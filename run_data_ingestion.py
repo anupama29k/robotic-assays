@@ -253,8 +253,8 @@ def parse_qubit_csv(content: str) -> list:
 
     Returns a list of dicts with sample_id, measurement_type='concentration',
     value (canonical ng/µL), units, raw_value, raw_units. Rows whose
-    concentration is non-numeric (e.g. "Out of range") are skipped, not
-    raised — Qubit happily emits these for failed wells.
+    concentration is non-numeric (e.g. "Out of range") are kept with a
+    null value and an explanatory note — never silently dropped.
     """
     import csv
     import io
@@ -360,9 +360,25 @@ def parse_qubit_csv(content: str) -> list:
         try:
             value_num = float(cleaned)
         except ValueError:
-            # Qubit emits "Out of range" / "Too low" — log silently and
-            # move on rather than failing the whole upload.
-            skipped += 1
+            # Qubit emits "Out of range" / "Too low" for failed wells.
+            # Do NOT drop the row: surface it with a null value so
+            # downstream validation marks it INVALID instead of the
+            # sample silently vanishing from the results.
+            results.append({
+                "result_type": "library_quantification",
+                "instrument": "qubit_fluorometer",
+                "sample_id": sample_id,
+                "well_position": None,
+                "measurements": {
+                    "concentration_ng_per_uL": None,
+                    "units": CONCENTRATION_CANONICAL_UNIT,
+                    "raw_value": None,
+                    "raw_units": raw_units,
+                },
+                "pass_fail": None,
+                "acceptance_criteria_met": None,
+                "notes": f"non-numeric concentration reported by instrument: '{raw_val}'",
+            })
             continue
 
         canonical = _convert_to_ng_per_ul(value_num, raw_units)
