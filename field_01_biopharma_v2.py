@@ -60,6 +60,48 @@ BIOPHARMA_ASSAYS = [
             "peak_symmetry_factor": "0.8-1.5",
             "column_pressure_bar": "50-300 bar throughout run"
         },
+        # ---- structured criteria pilot (see assay_criteria_schema.py) --------
+        # The prose dict above is unchanged and still authoritative for humans.
+        # This block restates the same rules in machine-scorable form so a
+        # validator can score them without parsing English. Note how many turn
+        # out to be project defaults rather than regulatory limits: USP <621>
+        # standardises HOW tailing and RSD are calculated, it does not set the
+        # numbers. Saying so out loud is the whole point of source_type.
+        "acceptance_criteria_structured": [
+            {"key": "system_suitability_retention_time_cv", "criterion_type": "replicate_cv", "scope": "run",
+             "applies_to": "reference_standard", "min": None, "max": 1.0, "unit": "%",
+             "display": "<= 1.0% across 3 injections",
+             "source": "Method default (project-defined); calculation methodology per USP <621>",
+             "source_type": "project_defined", "machine_scorable": True},
+            {"key": "standard_curve_r2", "criterion_type": "curve_r2", "scope": "plate",
+             "applies_to": "standard", "min": 0.998, "max": None, "unit": None,
+             "display": ">= 0.998",
+             "source": "Method default (project-defined); ICH Q2(R2) requires linearity be demonstrated and the coefficient reported, without fixing a threshold",
+             "source_type": "project_defined", "machine_scorable": True},
+            {"key": "qc_sample_recovery", "criterion_type": "recovery", "scope": "run",
+             "applies_to": "qc", "min": 85.0, "max": 115.0, "unit": "% of nominal",
+             "display": "85-115% of known concentration",
+             "source": "Conventional recovery window for protein titer QC; numerically the same as the ICH M10 bioanalytical window but not itself an ICH requirement for this assay class",
+             "source_type": "community_convention", "machine_scorable": True},
+            {"key": "peak_symmetry_factor", "criterion_type": "peak_shape", "scope": "run",
+             "applies_to": "reference_standard", "min": 0.8, "max": 1.5, "unit": None,
+             "display": "0.8-1.5",
+             "source": "Method default (project-defined); calculation methodology per USP <621>",
+             "source_type": "project_defined", "machine_scorable": True},
+            {"key": "column_pressure_bar", "criterion_type": "pressure", "scope": "run",
+             "applies_to": "all", "min": 50.0, "max": 300.0, "unit": "bar",
+             "display": "50-300 bar throughout run",
+             "source": "Protein A column operating window; the 350 bar replacement trigger in notes is the same physical limit",
+             "source_type": "instrument_physics", "machine_scorable": True},
+        ],
+        "well_roles": {
+            "sample": {"min": 0.1, "max": 5.0, "unit": "mg/mL",
+                       "note": "Instrument linear range. Outside it the sample is re-injected at an appropriate dilution rather than reported -- the same rule robot_steps already applies."},
+            "qc": {"min": 85.0, "max": 115.0, "unit": "% of nominal",
+                   "note": "System suitability check vial, injected first. It decides whether the batch is interpretable at all."},
+            "standard": {"skip": True,
+                         "note": "The five Protein A calibrators define the curve; they are scored collectively by standard_curve_r2, not individually against a range."},
+        },
         "environment_requirement": "Standard lab bench (BSL-1)",
         "platform_compatibility": "Full -- no environmental controls required",
         "notes": "Protein A column requires conditioning with 5 column volumes PBS before first use each day. If peak retention time drifts > 0.2 minutes, flag for column re-qualification. Replace Protein A column after 500 injections or when back-pressure exceeds 350 bar.",
