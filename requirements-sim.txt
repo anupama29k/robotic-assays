@@ -1,0 +1,6 @@
+# Opentrons simulator for validate_library.py's protocol gate.
+# Pinned: opentrons 9.x and later refuse OT-2 protocols ("designed for an OT-2
+# robot ... download the Opentrons-OT2 app"); 8.8.2 is the last release that
+# simulates them. Install in its own venv -- it pins numpy/jsonschema versions
+# that conflict with the Streamlit workbench.
+opentrons==8.8.2
