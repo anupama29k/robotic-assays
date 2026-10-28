@@ -393,19 +393,29 @@ class Plan:
 # Plate maps (Results Bridge format: {well: role})
 # ═══════════════════════════════════════════════════════════════════════
 
-def standards_and_duplicate_samples(n_samples):
-    """Cols 1-2: 8-point standard in duplicate (H = 0 = blank).
-    Cols 3-12: samples in duplicate, sample i -> row i%8 of col pair 3+2*(i//8)."""
+def standards_and_duplicate_samples(n_samples, top_conc, conc_unit, sample_dilution=1):
+    """Results Bridge M8 plate map.
+
+    Cols 1-2: 8-point standard in duplicate, row A = top_conc, 2-fold down to
+    row G; row H = 0 = blank. Cols 3-12: samples in duplicate, sample i ->
+    row i%8 of column pair 3+2*(i//8). Each well carries its role and, where it
+    applies, concentration, replicate group and dilution, so Results Bridge
+    can fit the curve and back-calculate without a separate layout file."""
     if n_samples > 40:
         raise PlanError("this layout holds at most 40 samples in duplicate")
-    pm = {}
+    pm = {"_meta": {"conc_unit": conc_unit, "layout": "std cols 1-2, samples in duplicate cols 3-12"}}
     for c in (1, 2):
         for i, r in enumerate(ROWS):
-            pm[f"{r}{c}"] = "blank" if r == "H" else "standard"
+            if r == "H":
+                pm[f"{r}{c}"] = {"role": "blank", "conc": 0}
+            else:
+                conc = top_conc / (2 ** i)
+                pm[f"{r}{c}"] = {"role": "standard", "conc": round(conc, 6), "group": f"STD{i + 1}"}
     for i in range(n_samples):
         col = 3 + 2 * (i // 8)
         for c in (col, col + 1):
-            pm[f"{ROWS[i % 8]}{c}"] = "sample"
+            pm[f"{ROWS[i % 8]}{c}"] = {"role": "sample", "group": f"S{i + 1:02d}",
+                                       "dilution": sample_dilution}
     return pm
 
 
@@ -443,7 +453,7 @@ def recipe_bio_002(assay):
     for i in range(n):
         p.seed(*sample_tube(i), 100)
     p.seed("samples_2", "D6", 400)
-    p.plate_map = standards_and_duplicate_samples(n)
+    p.plate_map = standards_and_duplicate_samples(n, 2000, "ug/mL")
 
     p.comment("Standards: 2000 -> 31.25 ug/mL 2-fold (7 points) + 0 ug/mL blank, column 1 of slot 2")
     p.dispense_from_pool_single("single", "PBS", [("stds", f"{r}1") for r in "BCDEFGH"], 150)
@@ -529,7 +539,9 @@ def recipe_bio_005(assay):
     for i in range(n):
         p.seed(*sample_tube(i), 150)
     p.seed("samples_2", "D6", 600)
-    p.plate_map = standards_and_duplicate_samples(n)
+    # Concentrations are relative to the top standard; set the real value in the
+    # plate map's _meta (or Results Bridge criteria) once the reference lot is known.
+    p.plate_map = standards_and_duplicate_samples(n, 1.0, "x top standard", sample_dilution=3)
     cols = range(1, 13)
 
     # ---- day 1 -----------------------------------------------------------
@@ -647,8 +659,10 @@ def build(assay_id):
     """Return (protocol_source, plate_map_json) for one recipe. Raises PlanError."""
     plan, notes = RECIPES[assay_id](library_entry(assay_id))
     source = plan.render(notes)
-    plate_map = json.dumps(dict(sorted(plan.plate_map.items(),
-                                       key=lambda kv: (int(kv[0][1:]), kv[0][0]))), indent=2) + "\n"
+    wells = {k: v for k, v in plan.plate_map.items() if not k.startswith("_")}
+    ordered = {k: v for k, v in plan.plate_map.items() if k.startswith("_")}
+    ordered.update(sorted(wells.items(), key=lambda kv: (int(kv[0][1:]), kv[0][0])))
+    plate_map = json.dumps(ordered, indent=2) + "\n"
     return source, plate_map
 
 
