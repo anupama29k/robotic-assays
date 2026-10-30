@@ -36,7 +36,30 @@ Three modes, one sidebar:
 
 ## Protocol export
 
-`rail_protocol_generator.py` compiles any assay into an execution plan and a **PyLabRobot-style Python module** (hardware-agnostic liquid-handling layer), plus numbered plain-text protocol exports — the bridge from structured assay definition to running code.
+### Simulator-verified Opentrons OT-2 protocols
+
+`opentrons_codegen.py` compiles library assays into **real Opentrons Python API v2 protocols** (`load_labware`, `load_instrument`, `pick_up_tip`, `aspirate`, `dispense`) in `protocols/opentrons/`, each with a Results Bridge plate map in `protocols/opentrons/plate_maps/`.
+
+| Assay | Protocol | Status |
+|---|---|---|
+| BIO_002 BCA protein assay | `bio_002_ot2.py` | 40 samples + 8-pt standard in duplicate; passes `opentrons_simulate` |
+| BIO_005 Sandwich ELISA | `bio_005_ot2.py` | Two-day coat → read, on-deck washes; passes `opentrons_simulate` |
+
+Each assay is a recipe written against a planner that checks, at generation time, what a simulator does not: well and reservoir volumes against labware capacity (with dead volume), tip-rack usage, pipette range, and that the recipe's volumes still appear in the library's `robot_steps`. It also computes the operator fill sheet and inserts wash-refill / waste-empty pauses before a remove-and-wash block, never mid-wash, so wells are not left to dry. Where the library entry did not fit physically (e.g. BCA's 98-well layout, a 21 mL working reagent in a 15 mL tube), the protocol header records the reconciliation.
+
+```bash
+python3 opentrons_codegen.py                 # regenerate protocols/opentrons/
+python3 -m venv .venv-sim && .venv-sim/bin/pip install -r requirements-sim.txt
+OPENTRONS_SIMULATE=.venv-sim/bin/opentrons_simulate python3 validate_library.py
+```
+
+`validate_library.py` fails if a generated protocol is stale, fails a planner check, fails simulation, or was hand-written without a recipe; CI (`.github/workflows/validate.yml`) runs it on every push. OT-2 simulation requires `opentrons==8.8.2` — later releases refuse OT-2 protocols.
+
+Research use only: passing simulation verifies the code, not the method. Liquid classes, residual volumes and assay performance must be measured on the robot that will run it.
+
+### Legacy outlines
+
+`rail_protocol_generator.py` and the `protocols/*_protocol.py` modules it produced are **PyLabRobot-style outlines**, not runnable code (no tip handling or aspiration; they fail on instantiation). They remain as planning references until each assay has an Opentrons recipe.
 
 ## Repository layout
 

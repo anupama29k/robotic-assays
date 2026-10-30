@@ -1,0 +1,24 @@
+name: validate-library
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install Opentrons simulator (isolated venv)
+        run: |
+          python -m venv .venv-sim
+          .venv-sim/bin/pip install -r requirements-sim.txt
+      - name: Generated protocols are current
+        run: python opentrons_codegen.py --check
+      - name: Validate library and simulate every Opentrons protocol
+        env:
+          OPENTRONS_SIMULATE: .venv-sim/bin/opentrons_simulate
+        run: python validate_library.py
